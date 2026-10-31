@@ -47,7 +47,11 @@ The nearest pair is selected from the displayed aperture and shutter scales. The
 3. Wait for the `FilmMeter-APKs` artifact on the completed workflow.
 4. Download the artifact and install `app-debug.apk` for testing. The release output is unsigned (`app-release-unsigned.apk`) and is intended for a later signing step if you plan to distribute it.
 
-The workflow installs Android SDK 36, JDK 17 and Gradle 8.11.1, runs the JVM unit tests, then builds debug and release APKs.
+The workflow uses `android-actions/setup-android@v4` (not v3), installs only `platform-tools` through the action, then installs `platforms;android-36` and `build-tools;36.0.0` explicitly with the current command-line `sdkmanager`. It also installs JDK 17 and Gradle 8.11.1, runs the JVM unit tests, then builds debug and release APKs. The removed SDK package named `tools` is deliberately never requested.
+
+### Build workflow note
+
+The previous `setup-android@v3` workflow failed before Gradle because that action requested the retired SDK package `tools`. This revision moves to `setup-android@v4`, explicitly avoids that package, and installs the Android platform/build-tools packages separately.
 
 ## Local build
 
@@ -57,7 +61,7 @@ Open the project in Android Studio with an installed Android 36 SDK and JDK 17, 
 gradle clean testDebugUnitTest assembleDebug assembleRelease
 ```
 
-## Version 0.1.0 limitations
+## Version 0.1.1 limitations
 
 - First target is Watch5 Pro. Generic Wear OS sensor profiles are represented in code but have not been validated on Pixel Watch or other Samsung models.
 - No multi-sensor fusion or sensor-orientation compensation is inferred automatically. Use the calibration offset for the current wrist posture.
