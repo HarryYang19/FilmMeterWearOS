@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,19 +22,28 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # v3 requested Google's removed "tools" SDK package by default.
+      # v4 no longer requests it; command-line tools (including sdkmanager)
+      # are installed and added to PATH by the action itself.
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses >/dev/null 2>&1 || true
-
-      - name: Install Android 36 SDK
-        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android 36 platform and build tools
+        run: |
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+
+      - name: Verify build toolchain
+        run: |
+          java -version
+          gradle --version
+          sdkmanager --list_installed
 
       - name: Run unit tests and build APKs
         run: gradle --no-daemon clean testDebugUnitTest assembleDebug assembleRelease
