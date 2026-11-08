@@ -11,8 +11,8 @@ android {
         applicationId = "com.harryyang.filmmeter"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -44,6 +44,5 @@ android {
 
 dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
-    implementation("androidx.wear:wear:1.3.0")
     testImplementation("junit:junit:4.13.2")
 }

@@ -27,6 +27,59 @@ class ExposureMathTest {
     }
 
     @Test
+    fun aperturePriorityKeepsApertureFixedAndSolvesShutter() {
+        val lockedIndex = ExposureMath.apertureValues.indexOf(5.6)
+        for (ev in (4..28).map { it * 0.5 }) {
+            val exposure = ExposureMath.exposureFromEv100(
+                ev100 = ev,
+                ei = 100,
+                priority = ExposurePriority.APERTURE,
+                lockedIndex = lockedIndex
+            )
+            assertEquals(lockedIndex, exposure.apertureIndex)
+            assertTrue("EV $ev error ${exposure.errorStops}", kotlin.math.abs(exposure.errorStops) <= 0.51)
+        }
+    }
+
+    @Test
+    fun shutterPriorityKeepsShutterFixedAndSolvesAperture() {
+        val lockedIndex = ExposureMath.shutterLabels.indexOf("125")
+        for (ev in (16..30).map { it * 0.5 }) {
+            val exposure = ExposureMath.exposureFromEv100(
+                ev100 = ev,
+                ei = 100,
+                priority = ExposurePriority.SHUTTER,
+                lockedIndex = lockedIndex
+            )
+            assertEquals(lockedIndex, exposure.shutterIndex)
+            assertTrue("EV $ev error ${exposure.errorStops}", kotlin.math.abs(exposure.errorStops) <= 0.51)
+        }
+    }
+
+    @Test
+    fun changingEiMovesOnlyTheUnlockedExposureParameter() {
+        val apertureIndex = ExposureMath.apertureValues.indexOf(8.0)
+        val aperture100 = ExposureMath.exposureFromEv100(10.0, 100, ExposurePriority.APERTURE, apertureIndex)
+        val aperture400 = ExposureMath.exposureFromEv100(10.0, 400, ExposurePriority.APERTURE, apertureIndex)
+        assertEquals(apertureIndex, aperture400.apertureIndex)
+        assertTrue(aperture400.shutterIndex < aperture100.shutterIndex)
+
+        val shutterIndex = ExposureMath.shutterLabels.indexOf("125")
+        val shutter100 = ExposureMath.exposureFromEv100(10.0, 100, ExposurePriority.SHUTTER, shutterIndex)
+        val shutter400 = ExposureMath.exposureFromEv100(10.0, 400, ExposurePriority.SHUTTER, shutterIndex)
+        assertEquals(shutterIndex, shutter400.shutterIndex)
+        assertTrue(shutter400.apertureIndex > shutter100.apertureIndex)
+    }
+
+    @Test
+    fun invalidLockedIndicesAreSafelyClamped() {
+        val aperture = ExposureMath.exposureFromEv100(8.0, 100, ExposurePriority.APERTURE, 999)
+        val shutter = ExposureMath.exposureFromEv100(8.0, 100, ExposurePriority.SHUTTER, -5)
+        assertEquals(ExposureMath.apertureValues.lastIndex, aperture.apertureIndex)
+        assertEquals(0, shutter.shutterIndex)
+    }
+
+    @Test
     fun calibrationBiasDoesNotAlterManualEvInput() {
         val manual = MeterState(
             source = MeterSource.MANUAL_EV,

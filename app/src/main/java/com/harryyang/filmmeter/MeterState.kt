@@ -21,7 +21,10 @@ data class MeterState(
     val sensorResponding: Boolean = false,
     val sensorName: String = "",
     val placement: SensorPlacement = SensorPlacement.WATCH5_PRO_FRONT_SIDE,
-    val ambient: Boolean = false,
+    /** NONE means both controls are recommendations; APERTURE/SHUTTER locks one dial. */
+    val priority: ExposurePriority = ExposurePriority.NONE,
+    /** Index in apertureValues or shutterSeconds according to [priority]. */
+    val lockedIndex: Int = 0,
     val timestampMs: Long = 0L
 ) {
     val effectiveEv100: Double
@@ -34,5 +37,5 @@ data class MeterState(
         }
 
     val exposure: ExposureMath.Exposure
-        get() = ExposureMath.exposureFromEv100(effectiveEv100, ei)
+        get() = ExposureMath.exposureFromEv100(effectiveEv100, ei, priority, lockedIndex)
 }

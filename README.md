@@ -1,70 +1,75 @@
-# Film Meter — Wear OS
+# Film Meter — Wear OS 0.2.0
 
-A first-version incident-light film exposure meter for Samsung Galaxy Watch5 Pro. The app is designed for the round 450 × 450-class display and uses a custom-drawn, dark mechanical-meter dial.
+A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
 
-## What it does
+## New in 0.2.0
 
-- Reads ambient illuminance through Android `Sensor.TYPE_LIGHT` (lux).
-- Smooths incoming readings with a short median window and an exponential filter in EV space.
-- Converts illuminance to an approximate incident-meter EV100, applies the selected film EI and a user calibration bias, then searches a practical aperture/shutter table for the nearest exposure pair.
-- Rotates the aperture and shutter scales so the chosen values meet the fixed top index.
-- Shows the selected EI in the small plate at 3 o'clock. Tap the EI plate to step through common film speeds; the watch's rotary input can also change EI.
-- The centre of the dial opens settings: EI, calibration bias, AUTO/MANUAL source, manual EV100 fine adjustment, quick scene presets (dim room through sunny daylight), and sensor-profile information.
-- Uses `AmbientLifecycleObserver` and target SDK 36 for a low-power monochrome ambient layout. Ambient refresh is system-scheduled and can be as infrequent as about once per minute; the last good light reading is held while in ambient mode to avoid depending on a non-wake-up sensor while the processor is suspended.
+- **True aperture-priority and shutter-priority metering.** Long-press the outer aperture ring or inner shutter ring, rotate your finger around that dial to select a value, then lift your finger to lock it. The other exposure parameter is calculated from the live EV and the selected EI/ISO. Long-pressing the other ring transfers the lock to that parameter.
+- **Retroactive edit highlight.** While editing, the selected scale gets a warm brass highlight, soft glow and a subtle pulse; the dial returns to its restrained locked appearance when released.
+- **Touch-only operation.** No virtual-bezel or rotary-crown controls are used on the meter screen or in settings. Tap the centre hub (or EI plate) for the menu. Menu values use visible touch targets and +/− controls.
+- **More legible dial.** Larger aperture/shutter numerals, stronger contrast, a clearer central reading and an independent EI plate are used while preserving the round-watch layout.
+- **Non-linear dial motion.** Scale changes use a cubic-bezier ease-out curve; edits also have soft tactile feedback.
+- **Persistent priority.** EI, calibration, meter source, manual EV, selected priority and the locked index are saved and restored after relaunch.
+- **No AOD mode.** Ambient lifecycle rendering and the Wear ambient dependency have been removed. `FLAG_KEEP_SCREEN_ON` keeps the display awake while the app remains foregrounded. Normal OS behavior resumes when the app is backgrounded or closed; sustained screen-on use increases battery consumption.
 
-## Galaxy Watch5 Pro sensor notes
+## Controls
 
-Samsung lists one light sensor in the Watch5 Pro sensor set. Its user manual marks a single light-sensor position in the front/side device-layout illustration, beside the touchscreen area. This v1 accesses the Android standard `TYPE_LIGHT` interface rather than hard-coding Samsung's vendor sensor name. The internal profile is `WATCH5_PRO_FRONT_SIDE`; future device profiles can represent a top display, top bezel, display centre, or side-frame placement. The sensor-position selector is intentionally not exposed in this first build.
+### Main meter
 
-The sensor plane is not an ideal incident-meter dome. Wrist angle, sleeve/hand shadow, sensor window orientation, and watch-case geometry can bias the reading. Use the CALIBRATION page to compare against a known handheld meter under the same orientation and enter an EV correction. A positive correction raises the measured EV (thus recommends a faster exposure); this correction applies only to the light sensor, not to a manual EV value. For a practical reading, raise the wrist with the watch face directed toward the scene/incident light and keep the sensor window unobstructed.
+- Long-press the **outer ring** to set and lock the aperture.
+- Long-press the **inner ring** to set and lock the shutter speed.
+- While holding, move your finger clockwise or counter-clockwise around the same ring to step through the scale. Release to finish and lock.
+- The opposite dial updates automatically as lux/EV changes.
+- Tap the central hub or the EI plate to open settings.
 
-## If the light sensor cannot be read
+### Settings
 
-The app tries the default `TYPE_LIGHT` sensor, then scans the device sensor list for another sensor with the same standard type. It retries registration at a normal sampling rate if the UI rate fails. If there is no such sensor, registration fails, or no initial event arrives after the 8-second startup timeout, it switches to the manual EV100 source. Zero lux is accepted as a valid dark-scene reading and floored only for the logarithmic EV calculation.
+- Tap the left/right round buttons to change EI/ISO or calibration.
+- Tap the measurement-source row to switch between the light sensor and manual EV.
+- In manual mode, use the −/+ buttons for 0.3 EV steps and open Scene Presets for a starting value.
+- Tap the close symbol or Done button to return to the meter.
 
-There is no trustworthy software substitute for ambient lux if the watch exposes no light sensor data. Screen brightness is an output controlled by the watch and is not a measurement of surrounding illumination; proximity, heart-rate, and motion sensors do not measure lux. Therefore the fallback is an explicit manual EV100 input, not a fabricated lux estimate. You can adjust EV100 in 0.3-stop increments, or choose a rough scene preset (dim room, room light, bright room, overcast, open shade, sunny) and fine-tune it. A scene preset is only a starting estimate; a known meter is preferable.
+The app deliberately ignores the watch's rotary/virtual bezel input. All controls are on-screen touch interactions.
 
 ## Metering model
 
-The approximation used here is the standard incident-illuminance form:
+The approximation used here is the incident-illuminance form:
 
 `EV100 = log2(lux × 100 / 250) + calibrationBias`
 
-which is equivalent to `log2(lux / 2.5) + calibrationBias`. The working exposure value is then:
+which is equivalent to `log2(lux / 2.5) + calibrationBias`. The working exposure value is:
 
 `EV(EI) = EV100 + log2(EI / 100)`
 
-A candidate pair is evaluated with:
+A camera combination is evaluated with:
 
 `EV = log2(aperture² / exposureTimeSeconds)`
 
-The nearest pair is selected from the displayed aperture and shutter scales. The table is deliberately conventional rather than exhaustive; actual film-camera metering, lens transmission, reciprocity failure at long exposures, and shutter/aperture calibration can differ. Treat the watch as a compact estimation tool, not a laboratory-calibrated handheld meter. For reciprocity-sensitive film and exposures longer than about one second, consult the film manufacturer's reciprocity data.
+With no fixed parameter, the meter recommends a balanced pair. In aperture-priority mode the selected f-number remains fixed and the nearest shutter speed is calculated. In shutter-priority mode the selected time remains fixed and the nearest aperture is calculated. If the required value is beyond the displayed scale, the complementary parameter stops at the nearest available end of the scale; the displayed EV difference indicates the residual exposure error.
+
+The displayed aperture and shutter tables are conventional rather than exhaustive. Actual film-camera metering, lens transmission, shutter/aperture calibration, reciprocity failure at long exposures and film latitude can differ. For reciprocity-sensitive film and exposures longer than about one second, consult the film manufacturer's reciprocity data.
+
+## Sensor and fallback
+
+- Reads ambient illuminance through Android `Sensor.TYPE_LIGHT` (lux).
+- Uses a short median window and EV-space smoothing to reduce hand movement and sensor noise.
+- If the sensor is absent, registration fails, or no initial event arrives after the startup timeout, the app switches to manual EV100.
+- Screen brightness is not used as a substitute for ambient light; it is an output setting, not an environment measurement.
+- The internal sensor placement profile remains `WATCH5_PRO_FRONT_SIDE`, with future profiles reserved for display-top, top-bezel, display-centre and side-frame layouts. The first version still uses the standard Android light-sensor interface.
+
+Use the calibration control to compare the watch against a known handheld meter with the watch held in the same orientation. A positive bias raises the measured EV and therefore recommends a faster exposure. Calibration applies only to sensor-derived EV, not to manually entered EV.
 
 ## Build on GitHub
 
-1. Create an empty GitHub repository and upload the contents of this ZIP to its root (the `.github` directory must remain present).
-2. Open **Actions → Build Film Meter APK → Run workflow**, or push to the `main` branch.
-3. Wait for the `FilmMeter-APKs` artifact on the completed workflow.
-4. Download the artifact and install `app-debug.apk` for testing. The release output is unsigned (`app-release-unsigned.apk`) and is intended for a later signing step if you plan to distribute it.
+1. Upload the contents of this project ZIP to the root of a GitHub repository; keep the `.github` directory.
+2. Open **Actions → Build Film Meter APK → Run workflow**, or push to `main`.
+3. Download the `FilmMeter-APKs` artifact after the workflow completes.
+4. Install `app-debug.apk` for testing. The release APK is unsigned and needs signing before distribution.
 
-The workflow uses `android-actions/setup-android@v4` (not v3), installs only `platform-tools` through the action, then installs `platforms;android-36` and `build-tools;36.0.0` explicitly with the current command-line `sdkmanager`. It also installs JDK 17 and Gradle 8.11.1, runs the JVM unit tests, then builds debug and release APKs. The removed SDK package named `tools` is deliberately never requested.
+The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, Android Gradle Plugin 8.10.1 and Kotlin 2.2.21. It uses `android-actions/setup-android@v4` and does not request the retired SDK package named `tools`.
 
-### Build workflow note
+## Version 0.2.0 notes
 
-The previous `setup-android@v3` workflow failed before Gradle because that action requested the retired SDK package `tools`. This revision moves to `setup-android@v4`, explicitly avoids that package, and installs the Android platform/build-tools packages separately.
-
-## Local build
-
-Open the project in Android Studio with an installed Android 36 SDK and JDK 17, or run:
-
-```bash
-gradle clean testDebugUnitTest assembleDebug assembleRelease
-```
-
-## Version 0.1.1 limitations
-
-- First target is Watch5 Pro. Generic Wear OS sensor profiles are represented in code but have not been validated on Pixel Watch or other Samsung models.
-- No multi-sensor fusion or sensor-orientation compensation is inferred automatically. Use the calibration offset for the current wrist posture.
-- The dial is a single-activity app, not a watch face or complication provider. AOD applies while the app is foregrounded; the system can still return to the watch face after its configured timeout.
-- Ambient display refresh is controlled by Wear OS. The app redraws on the ambient callback, but cannot force high-frequency AOD refresh.
-- No camera-based fallback is attempted. The Watch5 Pro has no built-in camera suitable for this measurement path.
+- First device target remains Galaxy Watch5 Pro. Other Wear OS watch sensor positions are represented in code but have not been validated on Pixel Watch or other Samsung models.
+- Long-press detection and dial rotation are optimized for a circular touch display. Test finger direction and sensitivity on the actual watch; the watch's bezel is intentionally not involved.
+- Keeping the screen awake while the application is foregrounded can noticeably increase battery use. The app no longer implements AOD or ambient-mode updates.

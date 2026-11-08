@@ -4,6 +4,10 @@ import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.pow
+import kotlin.math.sqrt
+
+/** Which control the photographer has fixed on the meter's mechanical dial. */
+enum class ExposurePriority { NONE, APERTURE, SHUTTER }
 
 /** Pure exposure math, deliberately separated from Android sensor/UI code. */
 object ExposureMath {
@@ -34,39 +38,90 @@ object ExposureMath {
         val shutterSeconds: Double,
         val shutterIndex: Int,
         val comboEv: Double,
+        /** Positive means the selected combination is brighter than the meter target. */
         val errorStops: Double
     )
 
     /**
-     * Incident-light approximation: EV100 = log2(E * ISO / 100 / C), C=250.
-     * At ISO 100 this is log2(lux / 2.5). Calibration is an EV offset.
+     * Incident-light approximation: EV100 = log2(E * 100 / C), C=250.
+     * At ISO 100 this becomes log2(lux / 2.5). Calibration is an EV offset.
      */
     fun ev100FromLux(lux: Double, calibrationBiasEv: Double = 0.0): Double {
         require(lux > 0.0 && lux.isFinite()) { "Lux must be a finite positive value" }
+        require(calibrationBiasEv.isFinite()) { "Calibration must be finite" }
         return ln(lux * 100.0 / INCIDENT_METER_CONSTANT) / LN2 + calibrationBiasEv
     }
 
-    fun exposureFromLux(lux: Double, ei: Int, calibrationBiasEv: Double = 0.0): Exposure {
-        return exposureFromEv100(ev100FromLux(lux, calibrationBiasEv), ei)
-    }
+    fun exposureFromLux(
+        lux: Double,
+        ei: Int,
+        calibrationBiasEv: Double = 0.0,
+        priority: ExposurePriority = ExposurePriority.NONE,
+        lockedIndex: Int = 0
+    ): Exposure = exposureFromEv100(ev100FromLux(lux, calibrationBiasEv), ei, priority, lockedIndex)
 
-    fun exposureFromEv100(ev100: Double, ei: Int): Exposure {
+    /**
+     * Calculates a pair at the selected EI. When a priority is set, that parameter
+     * remains exact and only the opposite dial is solved/quantized to its nearest stop.
+     */
+    fun exposureFromEv100(
+        ev100: Double,
+        ei: Int,
+        priority: ExposurePriority = ExposurePriority.NONE,
+        lockedIndex: Int = 0
+    ): Exposure {
         require(ev100.isFinite()) { "EV must be finite" }
         require(ei > 0) { "EI must be positive" }
         val evAtEi = ev100 + log2(ei / 100.0)
+
+        return when (priority) {
+            ExposurePriority.APERTURE -> exposureWithFixedAperture(ev100, evAtEi, lockedIndex)
+            ExposurePriority.SHUTTER -> exposureWithFixedShutter(ev100, evAtEi, lockedIndex)
+            ExposurePriority.NONE -> findBalancedPair(ev100, evAtEi)
+        }
+    }
+
+    private fun exposureWithFixedAperture(ev100: Double, evAtEi: Double, requestedIndex: Int): Exposure {
+        val apertureIndex = requestedIndex.coerceIn(apertureValues.indices)
+        val aperture = apertureValues[apertureIndex]
+        val shutterIndex = shutterSeconds.indices.minWithOrNull(
+            compareBy<Int> { index ->
+                abs(log2(aperture * aperture / shutterSeconds[index]) - evAtEi)
+            }.thenBy { index -> shutterSeconds[index] }
+        ) ?: 0
+        val shutter = shutterSeconds[shutterIndex]
+        val comboEv = log2(aperture * aperture / shutter)
+        return Exposure(ev100, evAtEi, aperture, apertureIndex, shutter, shutterIndex, comboEv, comboEv - evAtEi)
+    }
+
+    private fun exposureWithFixedShutter(ev100: Double, evAtEi: Double, requestedIndex: Int): Exposure {
+        val shutterIndex = requestedIndex.coerceIn(shutterSeconds.indices)
+        val shutter = shutterSeconds[shutterIndex]
+        val apertureIndex = apertureValues.indices.minWithOrNull(
+            compareBy<Int> { index ->
+                abs(log2(apertureValues[index] * apertureValues[index] / shutter) - evAtEi)
+            }.thenBy { index -> abs(log2(apertureValues[index] / 8.0)) }
+        ) ?: 0
+        val aperture = apertureValues[apertureIndex]
+        val comboEv = log2(aperture * aperture / shutter)
+        return Exposure(ev100, evAtEi, aperture, apertureIndex, shutter, shutterIndex, comboEv, comboEv - evAtEi)
+    }
+
+    private fun findBalancedPair(ev100: Double, evAtEi: Double): Exposure {
         var best: Exposure? = null
         var bestScore = Double.POSITIVE_INFINITY
-
         for (a in apertureValues.indices) {
             val aperture = apertureValues[a]
             for (s in shutterSeconds.indices) {
                 val seconds = shutterSeconds[s]
                 val comboEv = log2(aperture * aperture / seconds)
                 val error = abs(comboEv - evAtEi)
-                // When several pairs are nearly equivalent, gently prefer a useful
-                // middle aperture around f/8 and avoid very slow hand-held speeds.
+                // Among near-equivalent pairs prefer a useful middle aperture and
+                // avoid very slow hand-held shutter speeds.
                 val aperturePreference = abs(log2(aperture / 8.0)) * 0.012
-                val slowShutterPenalty = if (seconds > 1.0 / 30.0) log2(seconds / (1.0 / 30.0)).coerceAtLeast(0.0) * 0.004 else 0.0
+                val slowShutterPenalty = if (seconds > 1.0 / 30.0) {
+                    log2(seconds / (1.0 / 30.0)).coerceAtLeast(0.0) * 0.004
+                } else 0.0
                 val score = error + aperturePreference + slowShutterPenalty
                 if (score < bestScore) {
                     bestScore = score
@@ -101,4 +156,14 @@ object ExposureMath {
     }
 
     fun luxFromEv100(ev100: Double): Double = 2.5 * 2.0.pow(ev100)
+
+    /** EV implied by a camera combination; useful to verify priority-mode results. */
+    fun combinationEv(apertureIndex: Int, shutterIndex: Int): Double {
+        val aperture = apertureValues[apertureIndex.coerceIn(apertureValues.indices)]
+        val shutter = shutterSeconds[shutterIndex.coerceIn(shutterSeconds.indices)]
+        return log2(aperture * aperture / shutter)
+    }
+
+    /** The ideal aperture for a locked shutter before quantizing to a standard stop. */
+    fun idealAperture(evAtEi: Double, shutterSeconds: Double): Double = sqrt(2.0.pow(evAtEi) * shutterSeconds)
 }
