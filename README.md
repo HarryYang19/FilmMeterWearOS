@@ -145,52 +145,6 @@ For best results, hold the watch in a position representative of the light falli
 
 Film Meter 使用智能手表的环境光传感器估算亮度。传感器位置、手腕朝向、衣物遮挡、阴影以及周围物体均可能影响测量结果。
 
----
-## New in 0.2.2
-
-- The calculated value on each dial is now markedly larger than the ordinary scale values and uses bright white text on a dark, white-outlined highlight plate.
-- The central exposure pair is displayed as two large white values (aperture and shutter) so it is the dominant information in the hub.
-- Enlarged the dial footprint to reduce unused edge space and increased the normal scale-label size.
-- Expanded touch bands to match the larger dial geometry.
-
-## New in 0.2.1
-
-- **Stronger dial hierarchy.** The selected fixed aperture/shutter is larger than ordinary scale labels; the complementary value calculated from the live meter is larger still. All scale labels are readable around the rings, with the right-side EI display kept clear.
-- **Rebalanced centre display.** The central hub is slightly smaller. The exposure pair and EV100 line have exchanged vertical positions, giving the live exposure combination the more prominent position.
-- **Larger menu controls.** Settings and scene controls are narrower and taller, with larger labels, values and plus/minus touch targets. Only the visible minus/plus areas change step values.
-- **Persistent dial-edit gesture.** Long-press a dial to enter edit mode, then release and make circular drags to change the setting. Long-press the same dial again to confirm, or leave it untouched for five seconds to auto-lock. The invisible touch bands extend beyond the printed ring for easier operation.
-
-## New in 0.2.0
-
-- **True aperture-priority and shutter-priority metering.** Long-press the outer aperture ring or inner shutter ring, rotate your finger around that dial to select a value, then lift your finger to lock it. The other exposure parameter is calculated from the live EV and the selected EI/ISO. Long-pressing the other ring transfers the lock to that parameter.
-- **Retroactive edit highlight.** While editing, the selected scale gets a warm brass highlight, soft glow and a subtle pulse; the dial returns to its restrained locked appearance when released.
-- **Touch-only operation.** No virtual-bezel or rotary-crown controls are used on the meter screen or in settings. Tap the centre hub (or EI plate) for the menu. Menu values use visible touch targets and +/− controls.
-- **More legible dial.** Larger aperture/shutter numerals, stronger contrast, a clearer central reading and an independent EI plate are used while preserving the round-watch layout.
-- **Non-linear dial motion.** Scale changes use a cubic-bezier ease-out curve; edits also have soft tactile feedback.
-- **Persistent priority.** EI, calibration, meter source, manual EV, selected priority and the locked index are saved and restored after relaunch.
-- **No AOD mode.** Ambient lifecycle rendering and the Wear ambient dependency have been removed. `FLAG_KEEP_SCREEN_ON` keeps the display awake while the app remains foregrounded. Normal OS behavior resumes when the app is backgrounded or closed; sustained screen-on use increases battery consumption.
-
-## Controls
-
-### Main meter
-
-- Long-press the **outer ring** to enter aperture edit mode; release, then drag around the dial to step through the scale.
-- Long-press the **inner ring** to enter shutter edit mode; release, then drag around the dial to step through the scale.
-- Once a parameter is selected, the broad annular area between the centre hub and the outer edge adjusts that same parameter. Crossing over the other printed ring will not switch the lock.
-- Long-press the currently edited dial again to confirm and lock immediately. Otherwise the edit automatically locks after five seconds without interaction.
-- The touch bands are wider than the visible labels so they are easier to reach on a small circular display. Tap the EI plate or centre hub for the menu.
-- The opposite dial updates automatically as lux/EV changes.
-- Tap the central hub or the EI plate to open settings.
-
-### Settings
-
-- Tap the left/right round buttons to change EI/ISO or calibration.
-- Tap the measurement-source row to switch between the light sensor and manual EV.
-- In manual mode, use the −/+ buttons for 0.3 EV steps and open Scene Presets for a starting value.
-- Open **Colors** to choose Brass / Amber, Arctic / Cyan, Garnet / Red, Forest / Lime or Graphite / Silver. The selected scheme is remembered after relaunch.
-- Tap the close symbol or Done button to return to the meter.
-
-The app deliberately ignores the watch's rotary/virtual bezel input. All controls are on-screen touch interactions. The left-edge swipe-to-dismiss gesture is excluded within a narrow strip; other navigation gestures and the hardware navigation key remain available. Android treats gesture exclusions as a request and device policy may still affect the result.
 
 ## Metering model
 
@@ -252,7 +206,6 @@ The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, And
 - Expanded touch bands to match the enlarged dial layout.
 
 
-
 ## Version 0.2.3 — touch, navigation and color themes
 
 - **Faster dial adjustment:** the angular detent is reduced to 60% of the previous span with half-detent rounding (about 1.67× the former sensitivity). Historical `MotionEvent` samples are consumed to avoid skipping steps, and the active/complementary dial animations are shortened to 42/72 ms.
@@ -270,3 +223,28 @@ The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, And
 - Menu typography has been rebalanced: larger page headings and row labels, consistent large values, and wider back buttons for scene/theme pages.
 
 Version `0.2.4`, `versionCode = 7`. The existing GitHub Actions workflow is retained.
+
+---
+## New in 0.2.2
+
+- The calculated value on each dial is now markedly larger than the ordinary scale values and uses bright white text on a dark, white-outlined highlight plate.
+- The central exposure pair is displayed as two large white values (aperture and shutter) so it is the dominant information in the hub.
+- Enlarged the dial footprint to reduce unused edge space and increased the normal scale-label size.
+- Expanded touch bands to match the larger dial geometry.
+
+## New in 0.2.1
+
+- **Stronger dial hierarchy.** The selected fixed aperture/shutter is larger than ordinary scale labels; the complementary value calculated from the live meter is larger still. All scale labels are readable around the rings, with the right-side EI display kept clear.
+- **Rebalanced centre display.** The central hub is slightly smaller. The exposure pair and EV100 line have exchanged vertical positions, giving the live exposure combination the more prominent position.
+- **Larger menu controls.** Settings and scene controls are narrower and taller, with larger labels, values and plus/minus touch targets. Only the visible minus/plus areas change step values.
+- **Persistent dial-edit gesture.** Long-press a dial to enter edit mode, then release and make circular drags to change the setting. Long-press the same dial again to confirm, or leave it untouched for five seconds to auto-lock. The invisible touch bands extend beyond the printed ring for easier operation.
+
+## New in 0.2.0
+
+- **True aperture-priority and shutter-priority metering.** Long-press the outer aperture ring or inner shutter ring, rotate your finger around that dial to select a value, then lift your finger to lock it. The other exposure parameter is calculated from the live EV and the selected EI/ISO. Long-pressing the other ring transfers the lock to that parameter.
+- **Retroactive edit highlight.** While editing, the selected scale gets a warm brass highlight, soft glow and a subtle pulse; the dial returns to its restrained locked appearance when released.
+- **Touch-only operation.** No virtual-bezel or rotary-crown controls are used on the meter screen or in settings. Tap the centre hub (or EI plate) for the menu. Menu values use visible touch targets and +/− controls.
+- **More legible dial.** Larger aperture/shutter numerals, stronger contrast, a clearer central reading and an independent EI plate are used while preserving the round-watch layout.
+- **Non-linear dial motion.** Scale changes use a cubic-bezier ease-out curve; edits also have soft tactile feedback.
+- **Persistent priority.** EI, calibration, meter source, manual EV, selected priority and the locked index are saved and restored after relaunch.
+- **No AOD mode.** Ambient lifecycle rendering and the Wear ambient dependency have been removed. `FLAG_KEEP_SCREEN_ON` keeps the display awake while the app remains foregrounded. Normal OS behavior resumes when the app is backgrounded or closed; sustained screen-on use increases battery consumption.
