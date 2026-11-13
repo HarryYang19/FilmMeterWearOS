@@ -448,9 +448,9 @@ class MeterDialView(
 
     private fun drawInteractionHint(canvas: Canvas) {
         val label = if (editingParameter != null) {
-            "DRAG TO ADJUST  ·  HOLD AGAIN TO LOCK  ·  AUTO 5S"
+            " "
         } else {
-            "HOLD A DIAL TO SELECT  ·  TAP CENTER FOR MENU"
+            " "
         }
         drawFittedText(canvas, label, 0f, radius * 0.955f, radius * 0.040f, radius * 1.80f, mutedColor)
     }
