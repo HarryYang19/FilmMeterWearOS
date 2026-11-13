@@ -1,9 +1,149 @@
-# Film Meter — Wear OS 0.2.4
+# Film Meter
+### A Vintage-Inspired Light Meter for Wear OS
+### 为 Wear OS 打造的复古胶片摄影测光表
+Film Meter is a film photography-oriented light meter designed for Wear OS smartwatches. By utilizing the watch's built-in ambient light sensor, it estimates the surrounding light level and calculates suitable exposure combinations based on the principles of traditional film photography.
 
-A touch-first incident-light film exposure meter for Samsung Galaxy Watch. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
+Inspired by classic handheld light meters and mechanical camera dials, Film Meter combines practical exposure metering with a vintage-inspired circular interface.
+
+Film Meter 是一款专为 Wear OS 智能手表设计的胶片摄影测光应用。它利用手表内置的环境光传感器估算周围光照，并依据传统胶片摄影的曝光规律计算合适的曝光组合。
+
+应用界面借鉴了经典手持测光表与机械相机的设计语言，将实用的曝光测量功能与复古同心圆仪表盘相结合。
 
 Please fine tune the Exposure Compensation before use !!!
+请务必在拍摄前微调曝光补偿，以适配实际环境。应用提供的曝光参数属于实用估算值，并不等同于经过专业校准的独立测光仪器。
+---
 
+## Features | 功能介绍
+
+### 1. Ambient Light Metering | 环境光测光
+
+- Uses the smartwatch's built-in ambient light sensor to estimate ambient illumination.
+- Provides real-time light readings and corresponding exposure calculations.
+- Supports manual exposure-value input as an alternative when automatic sensor readings are unavailable.
+
+- 利用智能手表内置的环境光传感器估算环境亮度。
+- 实时显示光照读数，并根据测光结果计算曝光组合。
+- 当自动传感器测光不可用时，可使用手动曝光值输入作为替代方案。
+
+### 2. Aperture and Shutter Priority | 光圈与快门优先
+
+Choose either aperture or shutter speed as the fixed exposure parameter. The application calculates the corresponding value according to the measured light level and preset ISO/EI.
+
+- **Aperture Priority:** Lock the aperture and calculate the recommended shutter speed.
+- **Shutter Priority:** Lock the shutter speed and calculate the recommended aperture.
+
+选择光圈或快门速度作为固定参数，应用根据当前测光结果及预设 ISO/EI 计算另一项曝光参数。
+
+- **光圈优先：** 锁定光圈，自动计算推荐快门速度。
+- **快门优先：** 锁定快门，自动计算推荐光圈。
+
+### 3. ISO / EI Configuration | ISO / EI 设置
+
+Set the film sensitivity (ISO/EI) in the menu. Exposure calculations automatically take the selected sensitivity into account.
+
+在菜单中设置胶片感光度（ISO/EI），所有曝光计算都会根据所选感光度进行调整。
+
+### 4. Vintage-Inspired Circular Interface | 复古同心圆界面
+
+- Concentric aperture and shutter-speed scales.
+- A fixed index pointer for reading exposure values.
+- Large, high-contrast calculated exposure values.
+- A dedicated ISO/EI display area.
+- Five selectable colour schemes.
+
+- 同心圆光圈与快门速度刻度盘。
+- 固定顶部指针，用于读取曝光参数。
+- 大字号、高对比度的计算结果显示。
+- 独立的 ISO/EI 显示区域。
+- 五种可切换的配色方案。
+
+---
+
+## Controls | 操作指南
+
+### 1. Main Dial | 主界面拨盘
+
+The main interface contains two concentric control rings:
+
+- Outer ring: Aperture.
+- Inner ring: Shutter speed.
+
+主界面由两个同心控制环组成：
+
+- 外圈：光圈值。
+- 内圈：快门速度。
+
+### 2. Locking an Exposure Parameter | 锁定曝光参数
+
+1. Long-press the aperture or shutter-speed dial to enter editing mode.
+2. The selected parameter is highlighted.
+3. Drag around the dial to adjust its value.
+4. Long-press again to confirm and lock the parameter.
+5. The parameter is also locked automatically after five seconds of inactivity.
+
+1. 长按光圈或快门拨盘，进入编辑模式。
+2. 被选中的参数会出现高亮效果。
+3. 沿拨盘区域滑动手指，调整参数。
+4. 再次长按即可确认并锁定。
+5. 如果五秒内没有继续操作，系统也会自动锁定当前参数。
+
+**Important:** Once a parameter is locked, the dial interaction area can be used to adjust that same parameter without accidentally switching to the other exposure priority.
+
+**注意：** 参数锁定后，拨盘的较大触控区域都会用于调整当前参数，不会因为手指移动到另一条刻度环而意外切换优先模式。
+
+### 3. Menu | 菜单
+
+Tap the central circular area to open the menu.
+
+The menu provides access to:
+
+- ISO/EI sensitivity settings.
+- Exposure and metering configuration.
+- Colour theme selection.
+- Other application settings.
+
+点击主界面中央圆形区域即可进入菜单。
+
+菜单提供以下设置：
+
+- ISO/EI 感光度设置。
+- 曝光及测光相关设置。
+- 配色主题选择。
+- 其他应用选项。
+
+---
+
+## Design Philosophy | 设计理念
+
+Film Meter is intended to bring the experience of using a traditional photographic instrument to a modern smartwatch.
+
+Rather than presenting exposure information as a conventional digital interface, it uses rotating scales, mechanical-inspired visual elements and clear exposure readouts to recreate the feel of a dedicated photographic light meter.
+
+Film Meter 希望将传统摄影仪器的使用体验带到现代智能手表上。
+
+它没有采用常见的数字化菜单式界面，而是通过旋转刻度、机械仪表风格的视觉元素，以及醒目的曝光组合显示，尽可能还原独立摄影测光表的操作感受。
+
+---
+
+## Compatibility | 兼容性
+
+- Designed and primarily tested for Samsung Galaxy Watch5 Pro.
+- Built for Wear OS.
+- Other Wear OS watches may be supported depending on their ambient light sensor hardware and software compatibility.
+
+- 主要面向三星 Galaxy Watch5 Pro 设计和测试。
+- 基于 Wear OS 开发。
+- 其他 Wear OS 手表能否正常使用，取决于其环境光传感器硬件及系统兼容性。
+
+## Disclaimer | 使用说明
+
+Film Meter estimates light levels using the smartwatch's ambient light sensor. Sensor placement, wrist orientation, clothing, shadows and surrounding objects may affect readings.
+
+For best results, hold the watch in a position representative of the light falling on the subject. The displayed exposure values should be treated as practical estimates rather than laboratory-calibrated measurements.
+
+Film Meter 使用智能手表的环境光传感器估算亮度。传感器位置、手腕朝向、衣物遮挡、阴影以及周围物体均可能影响测量结果。
+
+---
 ## New in 0.2.2
 
 - The calculated value on each dial is now markedly larger than the ordinary scale values and uses bright white text on a dark, white-outlined highlight plate.
