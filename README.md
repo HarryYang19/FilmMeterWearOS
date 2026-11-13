@@ -1,6 +1,13 @@
-# Film Meter — Wear OS 0.2.1
+# Film Meter — Wear OS 0.2.2
 
 A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
+
+## New in 0.2.2
+
+- The calculated value on each dial is now markedly larger than the ordinary scale values and uses bright white text on a dark, white-outlined highlight plate.
+- The central exposure pair is displayed as two large white values (aperture and shutter) so it is the dominant information in the hub.
+- Enlarged the dial footprint to reduce unused edge space and increased the normal scale-label size.
+- Expanded touch bands to match the larger dial geometry.
 
 ## New in 0.2.1
 
@@ -88,3 +95,14 @@ The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, And
 - First device target remains Galaxy Watch5 Pro. Other Wear OS watch sensor positions are represented in code but have not been validated on Pixel Watch or other Samsung models.
 - Long-press detection and dial rotation are optimized for a circular touch display. Test finger direction and sensitivity on the actual watch; the watch's bezel is intentionally not involved.
 - Keeping the screen awake while the application is foregrounded can noticeably increase battery use. The app no longer implements AOD or ambient-mode updates.
+
+
+## Version 0.2.2 display update
+
+- Increased the round-dial drawing radius to use more of the available display area.
+- Enlarged ordinary aperture and shutter labels for better legibility.
+- The calculated dial value is now substantially larger than neighbouring values, drawn in bright white with a high-contrast dark plate and white outline; the result is rendered last to keep it visually dominant.
+- The calculated centre exposure pair (`f-number` and shutter speed) is split into two large white values, with EV100 retained below it.
+- Expanded touch bands to match the enlarged dial layout.
+
+Build with the existing GitHub Actions workflow. Version: 0.2.2 (versionCode 5).

@@ -83,6 +83,10 @@ class MeterDialView(
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
     }
+    private val calculatedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
+    }
     private val arcRect = RectF()
     private val scratchRect = RectF()
 
@@ -124,7 +128,7 @@ class MeterDialView(
         super.onSizeChanged(w, h, oldw, oldh)
         cx = w / 2f
         cy = h / 2f
-        radius = min(w, h) * 0.485f
+        radius = min(w, h) * 0.495f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -144,10 +148,12 @@ class MeterDialView(
     }
 
     private fun drawMeter(canvas: Canvas) {
-        val outerR = radius * 0.895f
-        val innerR = radius * 0.690f
-        val outerLabelR = radius * 0.795f
-        val innerLabelR = radius * 0.595f
+        // Use almost the full round display. The outer index track now sits
+        // close to the physical edge while retaining a small clipping margin.
+        val outerR = radius * 0.945f
+        val innerR = radius * 0.735f
+        val outerLabelR = radius * 0.845f
+        val innerLabelR = radius * 0.630f
         val apertureLocked = state.priority == ExposurePriority.APERTURE
         val shutterLocked = state.priority == ExposurePriority.SHUTTER
         val apertureEditing = editingParameter == ExposurePriority.APERTURE
@@ -166,12 +172,27 @@ class MeterDialView(
             drawActiveArc(canvas, innerR, shutterEditing, 300f)
         }
 
+        // Draw the index marker before labels: the selected highlight plate
+        // masks its tip cleanly so the oversized white number remains legible.
+        // The fixed index marker is shared by both concentric scales.
+        linePaint.color = accentColor
+        linePaint.strokeWidth = radius * 0.012f
+        canvas.drawLine(0f, -radius * 0.975f, 0f, -radius * 0.905f, linePaint)
+        val pointer = Path().apply {
+            moveTo(-radius * 0.030f, -radius * 0.905f)
+            lineTo(radius * 0.030f, -radius * 0.905f)
+            lineTo(0f, -radius * 0.866f)
+            close()
+        }
+        fillPaint.color = accentColor
+        canvas.drawPath(pointer, fillPaint)
+
         drawDialLabels(
             canvas = canvas,
             labels = ExposureMath.apertureLabels,
             labelRadius = outerLabelR,
             rotation = apertureRotation,
-            fontSize = radius * 0.089f,
+            fontSize = radius * 0.100f,
             selectedIndex = state.exposure.apertureIndex,
             isFixed = apertureLocked,
             isCalculated = !apertureLocked,
@@ -183,26 +204,13 @@ class MeterDialView(
             labels = ExposureMath.shutterLabels,
             labelRadius = innerLabelR,
             rotation = shutterRotation,
-            fontSize = radius * 0.076f,
+            fontSize = radius * 0.087f,
             selectedIndex = state.exposure.shutterIndex,
             isFixed = shutterLocked,
             isCalculated = !shutterLocked,
             isEditing = shutterEditing,
             hideRightGap = true
         )
-
-        // The fixed index marker is shared by both concentric scales.
-        linePaint.color = accentColor
-        linePaint.strokeWidth = radius * 0.012f
-        canvas.drawLine(0f, -radius * 0.985f, 0f, -radius * 0.905f, linePaint)
-        val pointer = Path().apply {
-            moveTo(-radius * 0.030f, -radius * 0.905f)
-            lineTo(radius * 0.030f, -radius * 0.905f)
-            lineTo(0f, -radius * 0.866f)
-            close()
-        }
-        fillPaint.color = accentColor
-        canvas.drawPath(pointer, fillPaint)
 
         drawCentralHub(canvas)
         drawIsoPlate(canvas)
@@ -268,7 +276,11 @@ class MeterDialView(
         isEditing: Boolean,
         hideRightGap: Boolean
     ) {
-        for (i in labels.indices) {
+        // Paint every neighbouring mark first, then draw the result value last.
+        // That keeps the enlarged calculated value crisp even when its wider
+        // highlight plate overlaps the adjacent scale labels by a few pixels.
+        val drawOrder = labels.indices.filter { it != selectedIndex } + selectedIndex
+        for (i in drawOrder) {
             val angleDeg = -90f + i * (360f / labels.size) + rotation
             val normalized = normalizeAngle(angleDeg)
             // The small opening at three o'clock is reserved for the EI plate.
@@ -278,34 +290,47 @@ class MeterDialView(
             val y = (sin(angle) * labelRadius).toFloat()
             val selected = i == selectedIndex
             val emphasis = when {
-                selected && isCalculated -> 1.29f
-                selected && isFixed -> 1.17f
-                selected -> 1.24f
+                selected && isCalculated && labels.size <= 10 -> 1.90f
+                selected && isCalculated -> 1.72f
+                selected && isFixed -> 1.30f
+                selected -> 1.38f
                 else -> 1.0f
             }
             val textSize = fontSize * emphasis
 
             if (selected) {
-                val width = textWidth(labels[i], textSize, bold = true) * 0.5f + radius * 0.040f
-                val height = textSize * 0.84f
-                scratchRect.set(x - width, y - height * 0.60f, x + width, y + height * 0.58f)
+                val width = textWidth(labels[i], textSize, bold = true, condensed = isCalculated) * 0.5f + radius * if (isCalculated) 0.025f else 0.044f
+                val height = textSize * 1.04f
+                scratchRect.set(x - width, y - height * 0.62f, x + width, y + height * 0.60f)
                 fillPaint.color = when {
                     isEditing -> Color.rgb(77, 54, 25)
-                    isCalculated -> Color.rgb(46, 39, 27)
+                    isCalculated -> Color.rgb(25, 29, 31)
                     isFixed -> Color.rgb(40, 37, 30)
                     else -> panelColor
                 }
-                if (isEditing) fillPaint.setShadowLayer(radius * (0.055f + highlightPulse * 0.075f), 0f, 0f, accentColor)
-                canvas.drawRoundRect(scratchRect, radius * 0.034f, radius * 0.034f, fillPaint)
+                if (isEditing) {
+                    fillPaint.setShadowLayer(radius * (0.055f + highlightPulse * 0.075f), 0f, 0f, accentColor)
+                } else if (isCalculated) {
+                    fillPaint.setShadowLayer(radius * 0.035f, 0f, 0f, Color.WHITE)
+                }
+                canvas.drawRoundRect(scratchRect, radius * 0.040f, radius * 0.040f, fillPaint)
                 fillPaint.clearShadowLayer()
-                linePaint.color = if (isEditing || isCalculated) accentColor else panelEdgeColor
-                linePaint.strokeWidth = radius * if (isEditing) 0.010f else 0.006f
-                canvas.drawRoundRect(scratchRect, radius * 0.034f, radius * 0.034f, linePaint)
+                linePaint.color = when {
+                    isEditing -> accentColor
+                    isCalculated -> Color.WHITE
+                    else -> panelEdgeColor
+                }
+                linePaint.strokeWidth = radius * when {
+                    isEditing -> 0.010f
+                    isCalculated -> 0.009f
+                    else -> 0.006f
+                }
+                canvas.drawRoundRect(scratchRect, radius * 0.040f, radius * 0.040f, linePaint)
             }
 
             val labelColor = when {
                 selected && isEditing -> accentColor
-                selected && isCalculated -> accentColor
+                selected && isCalculated -> Color.WHITE
                 selected && isFixed -> brightColor
                 selected -> brightColor
                 else -> Color.rgb(180, 176, 165)
@@ -317,13 +342,16 @@ class MeterDialView(
                 y + textSize * 0.34f,
                 textSize,
                 labelColor,
-                bold = selected
+                bold = selected,
+                condensed = selected && isCalculated
             )
         }
     }
 
     private fun drawCentralHub(canvas: Canvas) {
-        val hubR = radius * 0.360f
+        // A larger hub fills the centre more effectively, without colliding with
+        // the inner shutter scale.
+        val hubR = radius * 0.405f
         fillPaint.color = panelColor
         canvas.drawCircle(0f, 0f, hubR, fillPaint)
         linePaint.color = panelEdgeColor
@@ -331,7 +359,7 @@ class MeterDialView(
         canvas.drawCircle(0f, 0f, hubR, linePaint)
         linePaint.color = dialColor
         linePaint.strokeWidth = radius * 0.004f
-        canvas.drawCircle(0f, 0f, hubR * 0.92f, linePaint)
+        canvas.drawCircle(0f, 0f, hubR * 0.94f, linePaint)
 
         val hasAutoReading = state.source == MeterSource.AUTO_SENSOR && state.lux != null
         val isWaiting = state.source == MeterSource.AUTO_SENSOR && state.lux == null
@@ -340,22 +368,28 @@ class MeterDialView(
             isWaiting -> "LIGHT SENSOR"
             else -> "MANUAL METER"
         }
-        drawText(canvas, topLabel, 0f, -radius * 0.190f, radius * 0.043f, mutedColor)
+        drawText(canvas, topLabel, 0f, -radius * 0.285f, radius * 0.043f, mutedColor)
 
         val mainReading = when {
             hasAutoReading -> formatLux(requireNotNull(state.lux))
             isWaiting -> "-- lx"
             else -> "EV ${String.format(Locale.US, "%.1f", state.manualEv100)}"
         }
-        drawText(canvas, mainReading, 0f, -radius * 0.055f, radius * 0.100f, brightColor, bold = true)
+        drawFittedText(canvas, mainReading, 0f, -radius * 0.168f, radius * 0.074f, radius * 0.70f, brightColor, bold = true)
 
-        // The exposure pair now occupies the former EV line; EV100 moves below it.
+        // Make both members of the calculated exposure pair the dominant centre
+        // typography. Separate alignment gives the shutter enough room for 1/1000.
         val exposure = state.exposure
-        val combination = "f/${ExposureMath.formatAperture(exposure.aperture)}  ${formatShutter(exposure.shutterSeconds)}"
-        drawFittedText(canvas, combination, 0f, radius * 0.085f, radius * 0.078f, radius * 0.65f, accentColor, bold = true)
+        val apertureText = "f/${ExposureMath.formatAperture(exposure.aperture)}"
+        val shutterText = formatShutter(exposure.shutterSeconds)
+        drawText(canvas, apertureText, -radius * 0.190f, radius * 0.048f, radius * 0.110f, Color.WHITE, bold = true)
+        drawText(canvas, shutterText, radius * 0.190f, radius * 0.048f, radius * 0.110f, Color.WHITE, bold = true)
+        linePaint.color = accentColor
+        linePaint.strokeWidth = radius * 0.006f
+        canvas.drawLine(0f, -radius * 0.050f, 0f, radius * 0.074f, linePaint)
 
         val evText = if (isWaiting) "WAITING FOR LIGHT" else "EV100  ${String.format(Locale.US, "%.1f", state.effectiveEv100)}"
-        drawText(canvas, evText, 0f, radius * 0.205f, radius * 0.043f, mutedColor)
+        drawText(canvas, evText, 0f, radius * 0.176f, radius * 0.052f, mutedColor)
 
         val lockLabel = when (state.priority) {
             ExposurePriority.APERTURE -> "APERTURE LOCKED"
@@ -363,12 +397,13 @@ class MeterDialView(
             ExposurePriority.NONE -> "AUTO PAIR"
         }
         val errorLabel = String.format(Locale.US, "Δ%+.1f EV", exposure.errorStops)
-        drawText(
+        drawFittedText(
             canvas,
             "$lockLabel  ·  $errorLabel",
             0f,
             radius * 0.292f,
-            radius * 0.032f,
+            radius * 0.033f,
+            radius * 0.72f,
             if (editingParameter != null) accentColor else mutedColor
         )
     }
@@ -394,7 +429,7 @@ class MeterDialView(
         } else {
             "HOLD A DIAL TO SELECT  ·  TAP CENTER FOR MENU"
         }
-        drawFittedText(canvas, label, 0f, radius * 0.972f, radius * 0.043f, radius * 1.72f, mutedColor)
+        drawFittedText(canvas, label, 0f, radius * 0.955f, radius * 0.040f, radius * 1.80f, mutedColor)
     }
 
     private fun drawSettings(canvas: Canvas) {
@@ -523,17 +558,26 @@ class MeterDialView(
         baselineY: Float,
         size: Float,
         color: Int,
-        bold: Boolean = false
+        bold: Boolean = false,
+        condensed: Boolean = false
     ) {
-        val p = if (bold) boldPaint else textPaint
+        val p = when {
+            condensed -> calculatedPaint
+            bold -> boldPaint
+            else -> textPaint
+        }
         p.textSize = size
         p.color = color
         p.clearShadowLayer()
         canvas.drawText(text, x, baselineY, p)
     }
 
-    private fun textWidth(text: String, size: Float, bold: Boolean): Float {
-        val p = if (bold) boldPaint else textPaint
+    private fun textWidth(text: String, size: Float, bold: Boolean, condensed: Boolean = false): Float {
+        val p = when {
+            condensed -> calculatedPaint
+            bold -> boldPaint
+            else -> textPaint
+        }
         p.textSize = size
         return p.measureText(text)
     }
@@ -687,7 +731,7 @@ class MeterDialView(
                 if (!longPressHandled && pressParameter == null) {
                     val dx = event.x - cx
                     val dy = event.y - cy
-                    if (hypot(dx, dy) < radius * 0.405f || isEiPlateHit(dx, dy)) {
+                    if (hypot(dx, dy) < radius * 0.435f || isEiPlateHit(dx, dy)) {
                         openSettings()
                     }
                 } else if (editingParameter != null && pressParameter != null) {
@@ -720,8 +764,8 @@ class MeterDialView(
         val distance = hypot(dx, dy) / radius
         // The two invisible hit bands meet between the printed label tracks.
         // This gives each dial a wider target without ambiguous overlap.
-        val apertureHit = distance in 0.715f..1.005f
-        val shutterHit = distance in 0.405f..0.715f
+        val apertureHit = distance in 0.765f..1.025f
+        val shutterHit = distance in 0.435f..0.765f
         return when {
             apertureHit -> ExposurePriority.APERTURE
             shutterHit -> ExposurePriority.SHUTTER
