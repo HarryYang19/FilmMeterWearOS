@@ -2,7 +2,7 @@
 
 A touch-first incident-light film exposure meter for Samsung Galaxy Watch. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
 
-Please fine tune the Exposure Compensation before use!!!
+Please fine tune the Exposure Compensation before use !!!
 
 ## New in 0.2.2
 
