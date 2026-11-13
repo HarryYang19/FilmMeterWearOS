@@ -290,44 +290,15 @@ class MeterDialView(
             val y = (sin(angle) * labelRadius).toFloat()
             val selected = i == selectedIndex
             val emphasis = when {
-                selected && isCalculated && labels.size <= 10 -> 1.90f
-                selected && isCalculated -> 1.72f
-                selected && isFixed -> 1.30f
-                selected -> 1.38f
+                selected && isCalculated && labels.size <= 10 -> 2.10f
+                selected && isCalculated -> 1.95f
+                selected && isFixed -> 1.45f
+                selected -> 1.45f
                 else -> 1.0f
             }
             val textSize = fontSize * emphasis
 
-            if (selected) {
-                val width = textWidth(labels[i], textSize, bold = true, condensed = isCalculated) * 0.5f + radius * if (isCalculated) 0.025f else 0.044f
-                val height = textSize * 1.04f
-                scratchRect.set(x - width, y - height * 0.62f, x + width, y + height * 0.60f)
-                fillPaint.color = when {
-                    isEditing -> Color.rgb(77, 54, 25)
-                    isCalculated -> Color.rgb(25, 29, 31)
-                    isFixed -> Color.rgb(40, 37, 30)
-                    else -> panelColor
-                }
-                if (isEditing) {
-                    fillPaint.setShadowLayer(radius * (0.055f + highlightPulse * 0.075f), 0f, 0f, accentColor)
-                } else if (isCalculated) {
-                    fillPaint.setShadowLayer(radius * 0.035f, 0f, 0f, Color.WHITE)
-                }
-                canvas.drawRoundRect(scratchRect, radius * 0.040f, radius * 0.040f, fillPaint)
-                fillPaint.clearShadowLayer()
-                linePaint.color = when {
-                    isEditing -> accentColor
-                    isCalculated -> Color.WHITE
-                    else -> panelEdgeColor
-                }
-                linePaint.strokeWidth = radius * when {
-                    isEditing -> 0.010f
-                    isCalculated -> 0.009f
-                    else -> 0.006f
-                }
-                canvas.drawRoundRect(scratchRect, radius * 0.040f, radius * 0.040f, linePaint)
-            }
-
+            
             val labelColor = when {
                 selected && isEditing -> accentColor
                 selected && isCalculated -> Color.WHITE
@@ -375,21 +346,21 @@ class MeterDialView(
             isWaiting -> "-- lx"
             else -> "EV ${String.format(Locale.US, "%.1f", state.manualEv100)}"
         }
-        drawFittedText(canvas, mainReading, 0f, -radius * 0.168f, radius * 0.074f, radius * 0.70f, brightColor, bold = true)
+        drawFittedText(canvas, mainReading, 0f, -radius * 0.168f, radius * 0.086f, radius * 0.70f, brightColor, bold = true)
 
         // Make both members of the calculated exposure pair the dominant centre
         // typography. Separate alignment gives the shutter enough room for 1/1000.
         val exposure = state.exposure
         val apertureText = "f/${ExposureMath.formatAperture(exposure.aperture)}"
         val shutterText = formatShutter(exposure.shutterSeconds)
-        drawText(canvas, apertureText, -radius * 0.190f, radius * 0.048f, radius * 0.110f, Color.WHITE, bold = true)
-        drawText(canvas, shutterText, radius * 0.190f, radius * 0.048f, radius * 0.110f, Color.WHITE, bold = true)
+        drawText(canvas, apertureText, -radius * 0.180f, radius * 0.048f, radius * 0.128f, Color.WHITE, bold = true)
+        drawText(canvas, shutterText, radius * 0.190f, radius * 0.048f, radius * 0.125f, Color.WHITE, bold = true)
         linePaint.color = accentColor
         linePaint.strokeWidth = radius * 0.006f
         canvas.drawLine(0f, -radius * 0.050f, 0f, radius * 0.074f, linePaint)
 
         val evText = if (isWaiting) "WAITING FOR LIGHT" else "EV100  ${String.format(Locale.US, "%.1f", state.effectiveEv100)}"
-        drawText(canvas, evText, 0f, radius * 0.176f, radius * 0.052f, mutedColor)
+        drawText(canvas, evText, 0f, radius * 0.176f, radius * 0.086f, mutedColor)
 
         val lockLabel = when (state.priority) {
             ExposurePriority.APERTURE -> "APERTURE LOCKED"
@@ -569,7 +540,19 @@ class MeterDialView(
         p.textSize = size
         p.color = color
         p.clearShadowLayer()
+
+        // 计算结果使用柔和光晕，不再使用方框
+        if (condensed) {
+            p.setShadowLayer(
+                size * 0.20f,
+                0f,
+                0f,
+                color
+            )
+        }
+        
         canvas.drawText(text, x, baselineY, p)
+        p.clearShadowLayer()
     }
 
     private fun textWidth(text: String, size: Float, bold: Boolean, condensed: Boolean = false): Float {
