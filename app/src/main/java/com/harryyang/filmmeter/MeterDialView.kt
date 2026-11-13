@@ -24,8 +24,9 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Mechanical-inspired, touch-first round meter. A long press on either dial
- * enters an edit state; circular finger movement selects and locks that dial.
+ * Mechanical-inspired, touch-first round meter. Long-press a dial to enter
+ * persistent edit mode, then circular drags adjust it. A second long press or
+ * five seconds without interaction confirms and locks the selected parameter.
  */
 class MeterDialView(
     context: Context,
@@ -41,10 +42,12 @@ class MeterDialView(
 
     private val handler = Handler(Looper.getMainLooper())
     private var pendingLongPress: Runnable? = null
+    private var editTimeout: Runnable? = null
     private var pressParameter: ExposurePriority? = null
     private var downX = 0f
     private var downY = 0f
-    private var longPressFired = false
+    private var longPressHandled = false
+    private var gestureTracking = false
     private var editingParameter: ExposurePriority? = null
     private var lastFingerAngle = 0f
     private var angleAccumulator = 0f
@@ -168,25 +171,25 @@ class MeterDialView(
             labels = ExposureMath.apertureLabels,
             labelRadius = outerLabelR,
             rotation = apertureRotation,
-            fontSize = radius * 0.078f,
+            fontSize = radius * 0.089f,
             selectedIndex = state.exposure.apertureIndex,
-            isLocked = apertureLocked,
-            isEditing = apertureEditing
+            isFixed = apertureLocked,
+            isCalculated = !apertureLocked,
+            isEditing = apertureEditing,
+            hideRightGap = true
         )
         drawDialLabels(
             canvas = canvas,
             labels = ExposureMath.shutterLabels,
             labelRadius = innerLabelR,
             rotation = shutterRotation,
-            fontSize = radius * 0.064f,
+            fontSize = radius * 0.076f,
             selectedIndex = state.exposure.shutterIndex,
-            isLocked = shutterLocked,
-            isEditing = shutterEditing
+            isFixed = shutterLocked,
+            isCalculated = !shutterLocked,
+            isEditing = shutterEditing,
+            hideRightGap = true
         )
-
-        // Small legends identify the two independently editable controls.
-        drawText(canvas, "F", -radius * 0.705f, radius * 0.045f, radius * 0.043f, mutedColor, bold = true)
-        drawText(canvas, "T", -radius * 0.485f, radius * 0.045f, radius * 0.043f, mutedColor, bold = true)
 
         // The fixed index marker is shared by both concentric scales.
         linePaint.color = accentColor
@@ -260,41 +263,67 @@ class MeterDialView(
         rotation: Float,
         fontSize: Float,
         selectedIndex: Int,
-        isLocked: Boolean,
-        isEditing: Boolean
+        isFixed: Boolean,
+        isCalculated: Boolean,
+        isEditing: Boolean,
+        hideRightGap: Boolean
     ) {
         for (i in labels.indices) {
             val angleDeg = -90f + i * (360f / labels.size) + rotation
             val normalized = normalizeAngle(angleDeg)
-            if (normalized < 22f || normalized > 338f) continue
+            // The small opening at three o'clock is reserved for the EI plate.
+            if (hideRightGap && (normalized < 22f || normalized > 338f)) continue
             val angle = Math.toRadians(angleDeg.toDouble())
             val x = (cos(angle) * labelRadius).toFloat()
             val y = (sin(angle) * labelRadius).toFloat()
             val selected = i == selectedIndex
-            if (selected) {
-                val width = textWidth(labels[i], fontSize * 1.13f, bold = true) * 0.5f + radius * 0.035f
-                val height = fontSize * 0.82f
-                scratchRect.set(x - width, y - height * 0.60f, x + width, y + height * 0.58f)
-                fillPaint.color = if (isEditing) Color.rgb(77, 54, 25) else if (isLocked) Color.rgb(56, 45, 28) else panelColor
-                if (isEditing) fillPaint.setShadowLayer(radius * (0.06f + highlightPulse * 0.08f), 0f, 0f, accentColor)
-                canvas.drawRoundRect(scratchRect, radius * 0.030f, radius * 0.030f, fillPaint)
-                fillPaint.clearShadowLayer()
-                linePaint.color = if (isEditing || isLocked) accentColor else panelEdgeColor
-                linePaint.strokeWidth = radius * if (isEditing) 0.009f else 0.005f
-                canvas.drawRoundRect(scratchRect, radius * 0.030f, radius * 0.030f, linePaint)
+            val emphasis = when {
+                selected && isCalculated -> 1.29f
+                selected && isFixed -> 1.17f
+                selected -> 1.24f
+                else -> 1.0f
             }
-            val labelColor = if (selected) brightColor else if (isLocked) mutedColor else brightColor
+            val textSize = fontSize * emphasis
+
+            if (selected) {
+                val width = textWidth(labels[i], textSize, bold = true) * 0.5f + radius * 0.040f
+                val height = textSize * 0.84f
+                scratchRect.set(x - width, y - height * 0.60f, x + width, y + height * 0.58f)
+                fillPaint.color = when {
+                    isEditing -> Color.rgb(77, 54, 25)
+                    isCalculated -> Color.rgb(46, 39, 27)
+                    isFixed -> Color.rgb(40, 37, 30)
+                    else -> panelColor
+                }
+                if (isEditing) fillPaint.setShadowLayer(radius * (0.055f + highlightPulse * 0.075f), 0f, 0f, accentColor)
+                canvas.drawRoundRect(scratchRect, radius * 0.034f, radius * 0.034f, fillPaint)
+                fillPaint.clearShadowLayer()
+                linePaint.color = if (isEditing || isCalculated) accentColor else panelEdgeColor
+                linePaint.strokeWidth = radius * if (isEditing) 0.010f else 0.006f
+                canvas.drawRoundRect(scratchRect, radius * 0.034f, radius * 0.034f, linePaint)
+            }
+
+            val labelColor = when {
+                selected && isEditing -> accentColor
+                selected && isCalculated -> accentColor
+                selected && isFixed -> brightColor
+                selected -> brightColor
+                else -> Color.rgb(180, 176, 165)
+            }
             drawText(
-                canvas, labels[i], x, y + fontSize * 0.34f,
-                if (selected) fontSize * 1.13f else fontSize,
-                if (selected && (isLocked || isEditing)) accentColor else labelColor,
+                canvas,
+                labels[i],
+                x,
+                y + textSize * 0.34f,
+                textSize,
+                labelColor,
                 bold = selected
             )
         }
     }
 
     private fun drawCentralHub(canvas: Canvas) {
-        val hubR = radius * 0.385f
+        val hubR = radius * 0.360f
         fillPaint.color = panelColor
         canvas.drawCircle(0f, 0f, hubR, fillPaint)
         linePaint.color = panelEdgeColor
@@ -311,20 +340,22 @@ class MeterDialView(
             isWaiting -> "LIGHT SENSOR"
             else -> "MANUAL METER"
         }
-        drawText(canvas, topLabel, 0f, -radius * 0.205f, radius * 0.044f, mutedColor)
+        drawText(canvas, topLabel, 0f, -radius * 0.190f, radius * 0.043f, mutedColor)
 
         val mainReading = when {
             hasAutoReading -> formatLux(requireNotNull(state.lux))
             isWaiting -> "-- lx"
             else -> "EV ${String.format(Locale.US, "%.1f", state.manualEv100)}"
         }
-        drawText(canvas, mainReading, 0f, -radius * 0.065f, radius * 0.112f, brightColor, bold = true)
-        val evText = if (isWaiting) "WAITING FOR LIGHT" else "EV100  ${String.format(Locale.US, "%.1f", state.effectiveEv100)}"
-        drawText(canvas, evText, 0f, radius * 0.075f, radius * 0.044f, mutedColor)
+        drawText(canvas, mainReading, 0f, -radius * 0.055f, radius * 0.100f, brightColor, bold = true)
 
+        // The exposure pair now occupies the former EV line; EV100 moves below it.
         val exposure = state.exposure
         val combination = "f/${ExposureMath.formatAperture(exposure.aperture)}  ${formatShutter(exposure.shutterSeconds)}"
-        drawText(canvas, combination, 0f, radius * 0.205f, radius * 0.071f, accentColor, bold = true)
+        drawFittedText(canvas, combination, 0f, radius * 0.085f, radius * 0.078f, radius * 0.65f, accentColor, bold = true)
+
+        val evText = if (isWaiting) "WAITING FOR LIGHT" else "EV100  ${String.format(Locale.US, "%.1f", state.effectiveEv100)}"
+        drawText(canvas, evText, 0f, radius * 0.205f, radius * 0.043f, mutedColor)
 
         val lockLabel = when (state.priority) {
             ExposurePriority.APERTURE -> "APERTURE LOCKED"
@@ -336,8 +367,8 @@ class MeterDialView(
             canvas,
             "$lockLabel  ·  $errorLabel",
             0f,
-            radius * 0.300f,
-            radius * 0.034f,
+            radius * 0.292f,
+            radius * 0.032f,
             if (editingParameter != null) accentColor else mutedColor
         )
     }
@@ -353,21 +384,21 @@ class MeterDialView(
         linePaint.color = accentColor
         linePaint.strokeWidth = radius * 0.008f
         canvas.drawRoundRect(scratchRect, radius * 0.025f, radius * 0.025f, linePaint)
-        drawText(canvas, "EI / ISO", scratchRect.centerX(), top + height * 0.35f, radius * 0.036f, mutedColor)
-        drawText(canvas, state.ei.toString(), scratchRect.centerX(), top + height * 0.79f, radius * 0.074f, brightColor, bold = true)
+        drawText(canvas, "EI / ISO", scratchRect.centerX(), top + height * 0.35f, radius * 0.040f, mutedColor)
+        drawText(canvas, state.ei.toString(), scratchRect.centerX(), top + height * 0.79f, radius * 0.082f, brightColor, bold = true)
     }
 
     private fun drawInteractionHint(canvas: Canvas) {
-        val label = when (editingParameter) {
-            ExposurePriority.APERTURE -> "TURN TO SET F-NUMBER"
-            ExposurePriority.SHUTTER -> "TURN TO SET SHUTTER"
-            else -> "LONG PRESS A DIAL  ·  TAP CENTER FOR MENU"
+        val label = if (editingParameter != null) {
+            "DRAG TO ADJUST  ·  HOLD AGAIN TO LOCK  ·  AUTO 5S"
+        } else {
+            "HOLD A DIAL TO SELECT  ·  TAP CENTER FOR MENU"
         }
-        drawText(canvas, label, 0f, radius * 0.975f, radius * 0.040f, mutedColor)
+        drawFittedText(canvas, label, 0f, radius * 0.972f, radius * 0.043f, radius * 1.72f, mutedColor)
     }
 
     private fun drawSettings(canvas: Canvas) {
-        drawMenuFrame(canvas, "METER SETTINGS", "TOUCH − / + TO CHANGE")
+        drawMenuFrame(canvas, "METER SETTINGS", "TOUCH THE LARGE − / + CONTROLS")
         drawStepRow(canvas, "FILM SPEED", "EI ${state.ei}", -0.345f)
         drawStepRow(canvas, "CALIBRATION", String.format(Locale.US, "%+.1f EV", state.calibrationBiasEv), -0.055f)
         drawToggleRow(
@@ -397,8 +428,8 @@ class MeterDialView(
         linePaint.color = dialColor
         linePaint.strokeWidth = radius * 0.010f
         canvas.drawCircle(0f, 0f, radius * 0.91f, linePaint)
-        drawText(canvas, title, 0f, -radius * 0.705f, radius * 0.060f, brightColor, bold = true)
-        drawText(canvas, subtitle, 0f, -radius * 0.575f, radius * 0.035f, mutedColor)
+        drawText(canvas, title, 0f, -radius * 0.705f, radius * 0.068f, brightColor, bold = true)
+        drawFittedText(canvas, subtitle, 0f, -radius * 0.565f, radius * 0.043f, radius * 1.28f, mutedColor)
         fillPaint.color = Color.rgb(48, 39, 25)
         canvas.drawCircle(radius * 0.67f, -radius * 0.60f, radius * 0.085f, fillPaint)
         linePaint.color = accentColor
@@ -409,60 +440,60 @@ class MeterDialView(
 
     private fun drawStepRow(canvas: Canvas, title: String, value: String, centerYFactor: Float) {
         val centerY = radius * centerYFactor
-        val rect = RectF(-radius * 0.755f, centerY - radius * 0.116f, radius * 0.755f, centerY + radius * 0.116f)
+        val rect = RectF(-radius * 0.695f, centerY - radius * 0.142f, radius * 0.695f, centerY + radius * 0.142f)
         fillPaint.color = panelColor
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, fillPaint)
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, fillPaint)
         linePaint.color = panelEdgeColor
-        linePaint.strokeWidth = radius * 0.004f
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, linePaint)
-        drawText(canvas, title, 0f, centerY - radius * 0.018f, radius * 0.039f, mutedColor)
-        drawText(canvas, value, 0f, centerY + radius * 0.070f, radius * 0.068f, brightColor, bold = true)
-        drawRoundButton(canvas, -radius * 0.565f, centerY, "−")
-        drawRoundButton(canvas, radius * 0.565f, centerY, "+")
+        linePaint.strokeWidth = radius * 0.005f
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, linePaint)
+        drawText(canvas, title, 0f, centerY - radius * 0.022f, radius * 0.048f, mutedColor)
+        drawFittedText(canvas, value, 0f, centerY + radius * 0.083f, radius * 0.079f, radius * 0.78f, brightColor, bold = true)
+        drawRoundButton(canvas, -radius * 0.505f, centerY, "−")
+        drawRoundButton(canvas, radius * 0.505f, centerY, "+")
     }
 
     private fun drawToggleRow(canvas: Canvas, title: String, value: String, centerYFactor: Float, active: Boolean) {
         val centerY = radius * centerYFactor
-        val rect = RectF(-radius * 0.755f, centerY - radius * 0.116f, radius * 0.755f, centerY + radius * 0.116f)
+        val rect = RectF(-radius * 0.695f, centerY - radius * 0.142f, radius * 0.695f, centerY + radius * 0.142f)
         fillPaint.color = if (active) Color.rgb(38, 34, 25) else panelColor
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, fillPaint)
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, fillPaint)
         linePaint.color = if (active) accentColor else panelEdgeColor
         linePaint.strokeWidth = radius * 0.006f
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, linePaint)
-        drawText(canvas, title, 0f, centerY - radius * 0.018f, radius * 0.039f, mutedColor)
-        drawText(canvas, value, 0f, centerY + radius * 0.070f, radius * 0.068f, if (active) accentColor else brightColor, bold = true)
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, linePaint)
+        drawText(canvas, title, 0f, centerY - radius * 0.022f, radius * 0.048f, mutedColor)
+        drawFittedText(canvas, value, 0f, centerY + radius * 0.083f, radius * 0.079f, radius * 1.03f, if (active) accentColor else brightColor, bold = true)
     }
 
     private fun drawInfoRow(canvas: Canvas, title: String, value: String, centerYFactor: Float) {
         val centerY = radius * centerYFactor
-        val rect = RectF(-radius * 0.755f, centerY - radius * 0.116f, radius * 0.755f, centerY + radius * 0.116f)
+        val rect = RectF(-radius * 0.695f, centerY - radius * 0.142f, radius * 0.695f, centerY + radius * 0.142f)
         fillPaint.color = panelColor
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, fillPaint)
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, fillPaint)
         linePaint.color = panelEdgeColor
-        linePaint.strokeWidth = radius * 0.004f
-        canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, linePaint)
-        drawText(canvas, title, 0f, centerY - radius * 0.018f, radius * 0.039f, mutedColor)
-        drawText(canvas, value, 0f, centerY + radius * 0.070f, radius * 0.040f, brightColor, bold = true)
+        linePaint.strokeWidth = radius * 0.005f
+        canvas.drawRoundRect(rect, radius * 0.060f, radius * 0.060f, linePaint)
+        drawText(canvas, title, 0f, centerY - radius * 0.022f, radius * 0.048f, mutedColor)
+        drawFittedText(canvas, value, 0f, centerY + radius * 0.083f, radius * 0.052f, radius * 1.18f, brightColor, bold = true)
     }
 
     private fun drawRoundButton(canvas: Canvas, x: Float, y: Float, label: String) {
         fillPaint.color = Color.rgb(55, 45, 29)
-        canvas.drawCircle(x, y, radius * 0.080f, fillPaint)
+        canvas.drawCircle(x, y, radius * 0.096f, fillPaint)
         linePaint.color = accentColor
-        linePaint.strokeWidth = radius * 0.006f
-        canvas.drawCircle(x, y, radius * 0.080f, linePaint)
-        drawText(canvas, label, x, y + radius * 0.035f, radius * 0.095f, brightColor, bold = true)
+        linePaint.strokeWidth = radius * 0.007f
+        canvas.drawCircle(x, y, radius * 0.096f, linePaint)
+        drawText(canvas, label, x, y + radius * 0.041f, radius * 0.112f, brightColor, bold = true)
     }
 
     private fun drawBottomButton(canvas: Canvas, label: String, centerYFactor: Float) {
         val y = radius * centerYFactor
-        val rect = RectF(-radius * 0.48f, y - radius * 0.065f, radius * 0.48f, y + radius * 0.065f)
+        val rect = RectF(-radius * 0.435f, y - radius * 0.082f, radius * 0.435f, y + radius * 0.082f)
         fillPaint.color = Color.rgb(49, 39, 23)
         canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, fillPaint)
         linePaint.color = accentColor
         linePaint.strokeWidth = radius * 0.005f
         canvas.drawRoundRect(rect, radius * 0.045f, radius * 0.045f, linePaint)
-        drawText(canvas, label, 0f, y + radius * 0.025f, radius * 0.047f, brightColor, bold = true)
+        drawText(canvas, label, 0f, y + radius * 0.031f, radius * 0.055f, brightColor, bold = true)
     }
 
     private fun drawScenePicker(canvas: Canvas) {
@@ -472,15 +503,15 @@ class MeterDialView(
         scenePresets.forEachIndexed { index, scene ->
             val x = columnX[index % 2]
             val y = rowY[index / 2]
-            val rect = RectF(x - radius * 0.315f, y - radius * 0.105f, x + radius * 0.315f, y + radius * 0.105f)
+            val rect = RectF(x - radius * 0.300f, y - radius * 0.125f, x + radius * 0.300f, y + radius * 0.125f)
             val selected = state.source == MeterSource.MANUAL_EV && abs(state.manualEv100 - scene.second) < 0.01
             fillPaint.color = if (selected) Color.rgb(61, 46, 26) else panelColor
             canvas.drawRoundRect(rect, radius * 0.035f, radius * 0.035f, fillPaint)
             linePaint.color = if (selected) accentColor else panelEdgeColor
             linePaint.strokeWidth = radius * 0.005f
             canvas.drawRoundRect(rect, radius * 0.035f, radius * 0.035f, linePaint)
-            drawText(canvas, scene.first, x, y + radius * 0.018f, radius * 0.048f, if (selected) accentColor else brightColor, bold = true)
-            drawText(canvas, "EV ${String.format(Locale.US, "%.1f", scene.second)}", x, y + radius * 0.070f, radius * 0.035f, mutedColor)
+            drawText(canvas, scene.first, x, y + radius * 0.020f, radius * 0.052f, if (selected) accentColor else brightColor, bold = true)
+            drawText(canvas, "EV ${String.format(Locale.US, "%.1f", scene.second)}", x, y + radius * 0.081f, radius * 0.042f, mutedColor)
         }
         drawBottomButton(canvas, "BACK TO SETTINGS", 0.765f)
     }
@@ -505,6 +536,25 @@ class MeterDialView(
         val p = if (bold) boldPaint else textPaint
         p.textSize = size
         return p.measureText(text)
+    }
+
+    private fun drawFittedText(
+        canvas: Canvas,
+        text: String,
+        x: Float,
+        baselineY: Float,
+        preferredSize: Float,
+        maxWidth: Float,
+        color: Int,
+        bold: Boolean = false
+    ) {
+        val measured = textWidth(text, preferredSize, bold)
+        val actualSize = if (measured > maxWidth && measured > 0f) {
+            preferredSize * (maxWidth / measured).coerceAtLeast(0.72f)
+        } else {
+            preferredSize
+        }
+        drawText(canvas, text, x, baselineY, actualSize, color, bold)
     }
 
     private fun formatLux(lux: Double): String = when {
@@ -583,11 +633,23 @@ class MeterDialView(
                 if (settingsOpen) return true
                 downX = event.x
                 downY = event.y
-                longPressFired = false
-                pressParameter = dialAt(event.x - cx, event.y - cy)
+                longPressHandled = false
+                gestureTracking = false
+                val dx = event.x - cx
+                val dy = event.y - cy
+                pressParameter = if (isEiPlateHit(dx, dy)) null else dialAt(dx, dy)
                 val parameter = pressParameter
                 if (parameter != null) {
-                    val task = Runnable { beginDialEdit(parameter) }
+                    val task = Runnable {
+                        pendingLongPress = null
+                        longPressHandled = true
+                        if (editingParameter == parameter) {
+                            // A second long press explicitly confirms the current setting.
+                            finishDialEdit()
+                        } else {
+                            beginDialEdit(parameter)
+                        }
+                    }
                     pendingLongPress = task
                     handler.postDelayed(task, ViewConfiguration.getLongPressTimeout().toLong())
                 }
@@ -596,10 +658,20 @@ class MeterDialView(
 
             MotionEvent.ACTION_MOVE -> {
                 if (settingsOpen) return true
-                if (!longPressFired && pressParameter != null) {
-                    val moved = hypot(event.x - downX, event.y - downY)
-                    if (moved > ViewConfiguration.get(context).scaledTouchSlop) cancelPendingLongPress()
-                } else if (longPressFired) {
+                val moved = hypot(event.x - downX, event.y - downY)
+                if (!longPressHandled && pendingLongPress != null && moved > ViewConfiguration.get(context).scaledTouchSlop) {
+                    cancelPendingLongPress()
+                    // During an already-open edit session, a normal circular drag adjusts the dial.
+                    if (editingParameter != null && pressParameter == editingParameter) {
+                        gestureTracking = true
+                        lastFingerAngle = angleDegrees(downX - cx, downY - cy)
+                        angleAccumulator = 0f
+                        updateEditTimeout()
+                        updateDialFromMotion(event.x - cx, event.y - cy)
+                    }
+                } else if (longPressHandled && editingParameter != null && gestureTracking) {
+                    updateDialFromMotion(event.x - cx, event.y - cy)
+                } else if (gestureTracking && editingParameter != null) {
                     updateDialFromMotion(event.x - cx, event.y - cy)
                 }
                 return true
@@ -612,15 +684,17 @@ class MeterDialView(
                     performClick()
                     return true
                 }
-                if (longPressFired) {
-                    finishDialEdit()
-                } else if (pressParameter == null) {
+                if (!longPressHandled && pressParameter == null) {
                     val dx = event.x - cx
                     val dy = event.y - cy
                     if (hypot(dx, dy) < radius * 0.405f || isEiPlateHit(dx, dy)) {
                         openSettings()
                     }
+                } else if (editingParameter != null && pressParameter != null) {
+                    // Lifting the finger ends a drag, not the edit session.
+                    updateEditTimeout()
                 }
+                gestureTracking = false
                 pressParameter = null
                 performClick()
                 return true
@@ -628,7 +702,7 @@ class MeterDialView(
 
             MotionEvent.ACTION_CANCEL -> {
                 cancelPendingLongPress()
-                if (longPressFired) finishDialEdit()
+                gestureTracking = false
                 pressParameter = null
                 return true
             }
@@ -641,17 +715,22 @@ class MeterDialView(
         return true
     }
 
+    /** Enlarged invisible touch bands around each visible dial; no virtual bezel is used. */
     private fun dialAt(dx: Float, dy: Float): ExposurePriority? {
-        val distance = hypot(dx, dy)
+        val distance = hypot(dx, dy) / radius
+        // The two invisible hit bands meet between the printed label tracks.
+        // This gives each dial a wider target without ambiguous overlap.
+        val apertureHit = distance in 0.715f..1.005f
+        val shutterHit = distance in 0.405f..0.715f
         return when {
-            distance in (radius * 0.715f)..(radius * 0.975f) -> ExposurePriority.APERTURE
-            distance in (radius * 0.485f)..(radius * 0.710f) -> ExposurePriority.SHUTTER
+            apertureHit -> ExposurePriority.APERTURE
+            shutterHit -> ExposurePriority.SHUTTER
             else -> null
         }
     }
 
     private fun isEiPlateHit(dx: Float, dy: Float): Boolean =
-        dx in (radius * 0.52f)..(radius * 0.93f) && abs(dy) < radius * 0.15f
+        dx in (radius * 0.53f)..(radius * 0.94f) && abs(dy) < radius * 0.145f
 
     private fun beginDialEdit(parameter: ExposurePriority) {
         val selectedIndex = when (parameter) {
@@ -659,14 +738,15 @@ class MeterDialView(
             ExposurePriority.SHUTTER -> state.exposure.shutterIndex
             ExposurePriority.NONE -> 0
         }
-        longPressFired = true
         editingParameter = parameter
+        gestureTracking = true
         angleAccumulator = 0f
         lastFingerAngle = angleDegrees(downX - cx, downY - cy)
         val count = if (parameter == ExposurePriority.APERTURE) ExposureMath.apertureValues.size else ExposureMath.shutterSeconds.size
         state = state.copy(priority = parameter, lockedIndex = selectedIndex.coerceIn(0, count - 1))
         calculateTargetRotations(animate = true)
         startHighlightPulse()
+        updateEditTimeout()
         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         onStateChanged(state)
         invalidate()
@@ -680,6 +760,7 @@ class MeterDialView(
         if (delta < -180f) delta += 360f
         lastFingerAngle = currentAngle
         angleAccumulator += delta
+        if (abs(delta) > 0.25f) updateEditTimeout()
 
         val count = if (parameter == ExposurePriority.APERTURE) ExposureMath.apertureValues.size else ExposureMath.shutterSeconds.size
         val stepAngle = 360f / count
@@ -700,13 +781,25 @@ class MeterDialView(
         }
     }
 
+    private fun updateEditTimeout() {
+        editTimeout?.let(handler::removeCallbacks)
+        if (editingParameter == null) return
+        val timeout = Runnable { finishDialEdit() }
+        editTimeout = timeout
+        handler.postDelayed(timeout, 5_000L)
+    }
+
     private fun finishDialEdit() {
+        editTimeout?.let(handler::removeCallbacks)
+        editTimeout = null
         if (editingParameter != null) {
             editingParameter = null
+            gestureTracking = false
             stopHighlightPulse()
             onStateChanged(state)
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
-        longPressFired = false
+        longPressHandled = true
         pressParameter = null
     }
 
@@ -720,6 +813,7 @@ class MeterDialView(
     private fun normalizeAngle(value: Float): Float = ((value % 360f) + 360f) % 360f
 
     private fun openSettings() {
+        if (editingParameter != null) finishDialEdit()
         settingsOpen = true
         settingsPage = 0
         invalidate()
@@ -741,9 +835,9 @@ class MeterDialView(
             }
             val column = if (x < 0f) 0 else 1
             val row = when {
-                y in -0.48f..-0.20f -> 0
-                y in -0.15f..0.13f -> 1
-                y in 0.18f..0.44f -> 2
+                y in -0.50f..-0.18f -> 0
+                y in -0.17f..0.15f -> 1
+                y in 0.16f..0.48f -> 2
                 else -> -1
             }
             val index = if (row >= 0) row * 2 + column else -1
@@ -757,11 +851,16 @@ class MeterDialView(
             return
         }
 
+        val stepDirection = when {
+            x in -0.67f..-0.35f -> -1
+            x in 0.35f..0.67f -> 1
+            else -> 0
+        }
         when {
-            y in -0.46f..-0.23f -> adjustEi(if (x < 0f) -1 else 1)
-            y in -0.17f..0.06f -> adjustCalibration(if (x < 0f) -1 else 1)
-            y in 0.12f..0.36f -> toggleSource()
-            y in 0.40f..0.65f && state.source == MeterSource.MANUAL_EV -> adjustManualEv(if (x < 0f) -1 else 1)
+            y in -0.495f..-0.205f && stepDirection != 0 -> adjustEi(stepDirection)
+            y in -0.205f..0.085f && stepDirection != 0 -> adjustCalibration(stepDirection)
+            y in 0.095f..0.375f -> toggleSource()
+            y in 0.385f..0.665f && state.source == MeterSource.MANUAL_EV && stepDirection != 0 -> adjustManualEv(stepDirection)
             y > 0.68f && abs(x) < 0.53f -> {
                 if (state.source == MeterSource.MANUAL_EV) settingsPage = 1 else closeSettings()
                 invalidate()
@@ -804,6 +903,8 @@ class MeterDialView(
 
     override fun onDetachedFromWindow() {
         cancelPendingLongPress()
+        editTimeout?.let(handler::removeCallbacks)
+        editTimeout = null
         apertureAnimator?.cancel()
         shutterAnimator?.cancel()
         stopHighlightPulse()

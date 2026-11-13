@@ -1,6 +1,13 @@
-# Film Meter — Wear OS 0.2.0
+# Film Meter — Wear OS 0.2.1
 
 A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
+
+## New in 0.2.1
+
+- **Stronger dial hierarchy.** The selected fixed aperture/shutter is larger than ordinary scale labels; the complementary value calculated from the live meter is larger still. All scale labels are readable around the rings, with the right-side EI display kept clear.
+- **Rebalanced centre display.** The central hub is slightly smaller. The exposure pair and EV100 line have exchanged vertical positions, giving the live exposure combination the more prominent position.
+- **Larger menu controls.** Settings and scene controls are narrower and taller, with larger labels, values and plus/minus touch targets. Only the visible minus/plus areas change step values.
+- **Persistent dial-edit gesture.** Long-press a dial to enter edit mode, then release and make circular drags to change the setting. Long-press the same dial again to confirm, or leave it untouched for five seconds to auto-lock. The invisible touch bands extend beyond the printed ring for easier operation.
 
 ## New in 0.2.0
 
@@ -16,9 +23,10 @@ A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. 
 
 ### Main meter
 
-- Long-press the **outer ring** to set and lock the aperture.
-- Long-press the **inner ring** to set and lock the shutter speed.
-- While holding, move your finger clockwise or counter-clockwise around the same ring to step through the scale. Release to finish and lock.
+- Long-press the **outer ring** to enter aperture edit mode; release, then drag around the outer touch band to step through the scale.
+- Long-press the **inner ring** to enter shutter edit mode; release, then drag around the inner touch band to step through the scale.
+- Long-press the currently edited dial again to confirm and lock immediately. Otherwise the edit automatically locks after five seconds without interaction.
+- The touch bands are wider than the visible labels so they are easier to reach on a small circular display. Tap the EI plate or centre hub for the menu.
 - The opposite dial updates automatically as lux/EV changes.
 - Tap the central hub or the EI plate to open settings.
 
@@ -67,6 +75,13 @@ Use the calibration control to compare the watch against a known handheld meter 
 4. Install `app-debug.apk` for testing. The release APK is unsigned and needs signing before distribution.
 
 The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, Android Gradle Plugin 8.10.1 and Kotlin 2.2.21. It uses `android-actions/setup-android@v4` and does not request the retired SDK package named `tools`.
+
+## Version 0.2.1 notes
+
+- Edit mode stays active after lifting the finger. A subsequent circular drag adjusts the selected dial; another long press confirms, or a five-second inactivity timer confirms automatically.
+- Selected and computed values are highlighted at two distinct text sizes; the computed complementary value is the larger of the two.
+- The centre exposure pair and EV100 lines have swapped positions. The hub is slightly reduced to maintain visual breathing room.
+- The settings cards are narrower and taller with larger touch targets.
 
 ## Version 0.2.0 notes
 
