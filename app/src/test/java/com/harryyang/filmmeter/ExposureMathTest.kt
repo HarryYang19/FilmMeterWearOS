@@ -80,6 +80,12 @@ class ExposureMathTest {
     }
 
     @Test
+    fun fiveColorSchemesAreAvailableAndBrassRemainsDefault() {
+        assertEquals(5, MeterColorScheme.values().size)
+        assertEquals(MeterColorScheme.BRASS, MeterState().colorScheme)
+    }
+
+    @Test
     fun calibrationBiasDoesNotAlterManualEvInput() {
         val manual = MeterState(
             source = MeterSource.MANUAL_EV,

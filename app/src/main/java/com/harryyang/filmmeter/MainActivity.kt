@@ -50,6 +50,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val savedBias = prefs.getFloat("calibration_bias", 0f).toDouble().coerceIn(-4.0, 4.0)
         val savedManualEv = prefs.getFloat("manual_ev100", 8f).toDouble().coerceIn(-2.0, 20.0)
         val savedSource = if (prefs.getBoolean("manual_mode", false)) MeterSource.MANUAL_EV else MeterSource.AUTO_SENSOR
+        val savedColorScheme = runCatching {
+            MeterColorScheme.valueOf(prefs.getString("color_scheme", MeterColorScheme.BRASS.name) ?: MeterColorScheme.BRASS.name)
+        }.getOrDefault(MeterColorScheme.BRASS)
         val savedPriority = runCatching {
             ExposurePriority.valueOf(prefs.getString("exposure_priority", ExposurePriority.NONE.name) ?: ExposurePriority.NONE.name)
         }.getOrDefault(ExposurePriority.NONE)
@@ -75,6 +78,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             source = savedSource,
             placement = placement,
             priority = savedPriority,
+            colorScheme = savedColorScheme,
             lockedIndex = savedLockedIndex
         )
 
@@ -217,6 +221,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             .putBoolean("manual_mode", currentState.source == MeterSource.MANUAL_EV)
             .putString("exposure_priority", currentState.priority.name)
             .putInt("locked_index", currentState.lockedIndex)
+            .putString("color_scheme", currentState.colorScheme.name)
             .apply()
     }
 }

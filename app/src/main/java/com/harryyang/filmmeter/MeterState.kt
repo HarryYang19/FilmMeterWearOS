@@ -11,6 +11,15 @@ enum class SensorPlacement {
 
 enum class MeterSource { AUTO_SENSOR, MANUAL_EV }
 
+/** Five contrasting dark palettes chosen for legibility on a small circular OLED. */
+enum class MeterColorScheme(val title: String) {
+    BRASS("Brass / Amber"),
+    ARCTIC("Arctic / Cyan"),
+    GARNET("Garnet / Red"),
+    FOREST("Forest / Lime"),
+    GRAPHITE("Graphite / Silver")
+}
+
 data class MeterState(
     val lux: Double? = null,
     val ei: Int = 100,
@@ -25,6 +34,7 @@ data class MeterState(
     val priority: ExposurePriority = ExposurePriority.NONE,
     /** Index in apertureValues or shutterSeconds according to [priority]. */
     val lockedIndex: Int = 0,
+    val colorScheme: MeterColorScheme = MeterColorScheme.BRASS,
     val timestampMs: Long = 0L
 ) {
     val effectiveEv100: Double

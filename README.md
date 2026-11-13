@@ -1,4 +1,4 @@
-# Film Meter — Wear OS 0.2.2
+# Film Meter — Wear OS 0.2.4
 
 A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. The interface is drawn specifically for a circular watch display and takes visual cues from classic mechanical exposure meters and camera shutter dials.
 
@@ -30,8 +30,9 @@ A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. 
 
 ### Main meter
 
-- Long-press the **outer ring** to enter aperture edit mode; release, then drag around the outer touch band to step through the scale.
-- Long-press the **inner ring** to enter shutter edit mode; release, then drag around the inner touch band to step through the scale.
+- Long-press the **outer ring** to enter aperture edit mode; release, then drag around the dial to step through the scale.
+- Long-press the **inner ring** to enter shutter edit mode; release, then drag around the dial to step through the scale.
+- Once a parameter is selected, the broad annular area between the centre hub and the outer edge adjusts that same parameter. Crossing over the other printed ring will not switch the lock.
 - Long-press the currently edited dial again to confirm and lock immediately. Otherwise the edit automatically locks after five seconds without interaction.
 - The touch bands are wider than the visible labels so they are easier to reach on a small circular display. Tap the EI plate or centre hub for the menu.
 - The opposite dial updates automatically as lux/EV changes.
@@ -42,9 +43,10 @@ A touch-first incident-light film exposure meter for Samsung Galaxy Watch5 Pro. 
 - Tap the left/right round buttons to change EI/ISO or calibration.
 - Tap the measurement-source row to switch between the light sensor and manual EV.
 - In manual mode, use the −/+ buttons for 0.3 EV steps and open Scene Presets for a starting value.
+- Open **Colors** to choose Brass / Amber, Arctic / Cyan, Garnet / Red, Forest / Lime or Graphite / Silver. The selected scheme is remembered after relaunch.
 - Tap the close symbol or Done button to return to the meter.
 
-The app deliberately ignores the watch's rotary/virtual bezel input. All controls are on-screen touch interactions.
+The app deliberately ignores the watch's rotary/virtual bezel input. All controls are on-screen touch interactions. The left-edge swipe-to-dismiss gesture is excluded within a narrow strip; other navigation gestures and the hardware navigation key remain available. Android treats gesture exclusions as a request and device policy may still affect the result.
 
 ## Metering model
 
@@ -105,4 +107,22 @@ The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, And
 - The calculated centre exposure pair (`f-number` and shutter speed) is split into two large white values, with EV100 retained below it.
 - Expanded touch bands to match the enlarged dial layout.
 
-Build with the existing GitHub Actions workflow. Version: 0.2.2 (versionCode 5).
+
+
+## Version 0.2.3 — touch, navigation and color themes
+
+- **Faster dial adjustment:** the angular detent is reduced to 60% of the previous span with half-detent rounding (about 1.67× the former sensitivity). Historical `MotionEvent` samples are consumed to avoid skipping steps, and the active/complementary dial animations are shortened to 42/72 ms.
+- **Expanded locked-dial touch area:** while editing, almost the entire annular area outside the centre hub and EI window controls the already-selected parameter. Crossing the other ring cannot change the lock. Parent interception is disabled during the gesture.
+- **Selective swipe-to-dismiss exclusion:** a 30 dp strip at the left edge is reserved for the app, matching Wear OS's left-to-right dismiss gesture. The right edge, bottom/home area and hardware navigation remain untouched. Android gesture exclusions are best-effort and can still be affected by device policy.
+- **Five persistent color themes:** Brass / Amber, Arctic / Cyan, Garnet / Red, Forest / Lime and Graphite / Silver. Select one under Settings → Colors; the choice is saved across relaunches.
+- **Menu typography:** headings, field labels, current values, step buttons, scene presets and palette names use a coordinated size hierarchy.
+
+## Version 0.2.4 — touch feel, navigation and palettes
+
+- Rotation detents are more responsive, historical touch samples are consumed, and dial animations are shortened while adjusting.
+- While a parameter is locked for editing, the enlarged annular touch area follows that same parameter across both printed rings. This prevents accidental priority switching.
+- The app reserves only a 30 dp strip along the left edge for Wear OS's left-to-right swipe-to-dismiss gesture. The opposite edge, bottom/home gestures and hardware navigation are left to the system. Gesture exclusion is best-effort and should be verified on the target watch.
+- Five persistent palettes are available under Settings → Colors: Brass / Amber, Arctic / Cyan, Garnet / Red, Forest / Lime and Graphite / Silver.
+- Menu typography has been rebalanced: larger page headings and row labels, consistent large values, and wider back buttons for scene/theme pages.
+
+Version `0.2.4`, `versionCode = 7`. The existing GitHub Actions workflow is retained.
