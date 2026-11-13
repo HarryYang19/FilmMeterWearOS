@@ -11,6 +11,7 @@ Film Meter 是一款专为 Wear OS 智能手表设计的胶片摄影测光应用
 
 Please fine tune the Exposure Compensation before use !!!
 请务必在拍摄前微调曝光补偿，以适配实际环境。应用提供的曝光参数属于实用估算值，并不等同于经过专业校准的独立测光仪器。
+
 ---
 
 ## Features | 功能介绍
