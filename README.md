@@ -13,7 +13,6 @@ Film Meter 是一款专为 Wear OS 智能手表设计的胶片摄影测光应用
 
 ### 请务必在拍摄前微调曝光补偿，以适配实际环境。应用提供的曝光参数属于实用估算值，并不等同于经过专业校准的独立测光仪器。
 
----
 
 ## Features | 功能介绍
 
@@ -59,7 +58,6 @@ Set the film sensitivity (ISO/EI) in the menu. Exposure calculations automatical
 - 独立的 ISO/EI 显示区域。
 - 五种可切换的配色方案。
 
----
 
 ## Controls | 操作指南
 
@@ -113,7 +111,6 @@ The menu provides access to:
 - 配色主题选择。
 - 其他应用选项。
 
----
 
 ## Design Philosophy | 设计理念
 
@@ -125,7 +122,6 @@ Film Meter 希望将传统摄影仪器的使用体验带到现代智能手表上
 
 它没有采用常见的数字化菜单式界面，而是通过旋转刻度、机械仪表风格的视觉元素，以及醒目的曝光组合显示，尽可能还原独立摄影测光表的操作感受。
 
----
 
 ## Compatibility | 兼容性
 
