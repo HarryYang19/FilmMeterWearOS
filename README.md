@@ -170,14 +170,6 @@ The displayed aperture and shutter tables are conventional rather than exhaustiv
 
 Use the calibration control to compare the watch against a known handheld meter with the watch held in the same orientation. A positive bias raises the measured EV and therefore recommends a faster exposure. Calibration applies only to sensor-derived EV, not to manually entered EV.
 
-## Build on GitHub
-
-1. Upload the contents of this project ZIP to the root of a GitHub repository; keep the `.github` directory.
-2. Open **Actions → Build Film Meter APK → Run workflow**, or push to `main`.
-3. Download the `FilmMeter-APKs` artifact after the workflow completes.
-4. Install `app-debug.apk` for testing. The release APK is unsigned and needs signing before distribution.
-
-The workflow uses JDK 17, Android SDK 36, Build Tools 36.0.0, Gradle 8.11.1, Android Gradle Plugin 8.10.1 and Kotlin 2.2.21. It uses `android-actions/setup-android@v4` and does not request the retired SDK package named `tools`.
 
 ## Version 0.2.1 notes
 
